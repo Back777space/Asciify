@@ -3,3 +3,11 @@
 *.jpeg
 *.png
 *.JPG
+
+# VIDEOS
+*.mp4
+*.MP4
+
+# PROGRAM FILES
+asciiFrames
+*.txt
