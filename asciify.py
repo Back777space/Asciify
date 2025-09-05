@@ -129,10 +129,12 @@ def handle_video(path):
 
 
 def handle_file(path: str):
-    if is_image(path):
-        handle_img(path)
+    if path.split('.')[-1].lower() in ["jpg", "jpeg","png"]:
+        handle_img()
+    elif path.split('.')[-1].lower() in ["mp4"]:
+        handle_video()
     else:
-        handle_video(path)
+        print("Unsupported file type, exiting...")
 
 
 if __name__ == "__main__":
