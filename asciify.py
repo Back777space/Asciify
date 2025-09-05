@@ -49,8 +49,8 @@ def resize_and_enhance(img):
     resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
 
     # contrast enhancement
-    # enhanced_img = cv2.convertScaleAbs(resized_img, alpha=1.2, beta=0)
-    return resized_img
+    enhanced_img = cv2.convertScaleAbs(resized_img, alpha=1.20, beta=0)
+    return enhanced_img
 
 
 def frame_to_ascii(frame):
@@ -61,40 +61,32 @@ def frame_to_ascii(frame):
     return ascii_frame
 
 
-def is_image(file_name):
-    try:
-        with open(file_name, "rb") as f:
-            header = f.read(12)
-        return (header.startswith(b"\xFF\xD8\xFF") or     # JPG
-                header.startswith(b"\x89PNG\r\n\x1a\n") or # PNG
-                header.startswith((b"GIF87a", b"GIF89a")) or # GIF
-                header.startswith(b"BM") or               # BMP
-                header.startswith((b"II*\x00", b"MM\x00*")) or # TIFF
-                (header.startswith(b"RIFF") and b"WEBP" in header)) # WEBP
-    except OSError:
-        return False
-
-
 def display(img):
     ascii_frame = frame_to_ascii(img)
     print("\033[H")
     print("\n".join(ascii_frame))
 
 
-def handle_camera():
+def handle_camera(detect_background):
     cap = cv2.VideoCapture(0)
-    fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False, varThreshold=4)
+    if detect_background:
+        fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False, varThreshold=4)
+
     try:
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
+
             frame = resize_and_enhance(frame)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            fgmask = fgbg.apply(frame)
-            fgmask_3ch = cv2.merge([fgmask, fgmask, fgmask])
-            # frame = cv2.bitwise_and(frame, fgmask_3ch)
+
+            if detect_background:
+                fgmask = fgbg.apply(frame)
+                fgmask_3ch = cv2.merge([fgmask, fgmask, fgmask])
+                frame = cv2.bitwise_and(frame, fgmask_3ch)
             display(frame)
+
     except KeyboardInterrupt:
         pass
     cap.release()
@@ -129,10 +121,10 @@ def handle_video(path):
 
 
 def handle_file(path: str):
-    if path.split('.')[-1].lower() in ["jpg", "jpeg","png"]:
-        handle_img()
+    if path.split('.')[-1].lower() in ["jpg", "jpeg", "png"]:
+        handle_img(path)
     elif path.split('.')[-1].lower() in ["mp4"]:
-        handle_video()
+        handle_video(path)
     else:
         print("Unsupported file type, exiting...")
 
@@ -146,10 +138,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--extended-char-set", required=False, action=argparse.BooleanOptionalAction, default=False)
 
-    subparsers = parser.add_subparsers(dest='subcommand')
-    subparsers.required = True
+    subparsers = parser.add_subparsers(dest='subcommand', required=True)
     
     camera_subp = subparsers.add_parser("camera")
+    camera_subp.add_argument("--detect-background", action=argparse.BooleanOptionalAction, default=False)
+
     file_subp = subparsers.add_parser("file")
     file_subp.add_argument("--path", help="Path to file", required=True)
     
@@ -161,6 +154,6 @@ if __name__ == "__main__":
     
     match args.subcommand:
         case "camera":
-            handle_camera()
+            handle_camera(args.detect_background)
         case "file":
             handle_file(args.path)
